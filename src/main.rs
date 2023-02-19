@@ -25,7 +25,7 @@ fn main() -> Result<()> {
         std::fs::read(args.file)?
     };
     if args.serde {
-        let _ = serde_json::from_str::<serde_json::Value>(&json)?;
+        let _ = serde_json::from_slice::<serde_json::Value>(&json)?;
     } else {
         let _ = parse(&json)?;
     }
