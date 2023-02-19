@@ -37,7 +37,21 @@ pub fn parse<'a>(json_buf: &'a str) -> Result<JsonValue> {
     let mut json = json_buf.chars().multipeek();
     ignore_ws(&mut json);
 
-    let val = parse_next(&mut json, ParseState::Value)?;
+    let val = match parse_next(&mut json, ParseState::Value) {
+        Ok(v) => v,
+        Err(e) => {
+            let remaining = json.collect::<String>();
+            bail!(
+                "Parse Error: {} with remaining json: {}",
+                e,
+                if remaining.len() >= 500 {
+                    format!("{}…", &remaining[0..500])
+                } else {
+                    remaining
+                }
+            );
+        }
+    };
 
     return Ok(val);
 }
@@ -67,8 +81,10 @@ fn parse_next<'a, I: Iterator<Item = char>>(
                     return parse_next(json, ParseState::Object);
                 }
                 json.reset_peek();
-                let next_4: [char; 4] =
-                    peek_static(json).map_or(Err(anyhow!("Expected next value")), |v| Ok(v))?;
+                let next_4: [char; 4] = peek_static(json).map_or(
+                    Err(anyhow!("Expected next value (looking for boolean or null)")),
+                    |v| Ok(v),
+                )?;
                 if next_4 == ['t', 'r', 'u', 'e'] {
                     take_static::<4, _, _>(json);
                     return Ok(JsonValue::Boolean(true));
@@ -81,11 +97,15 @@ fn parse_next<'a, I: Iterator<Item = char>>(
                     take_static::<5, _, _>(json);
                     return Ok(JsonValue::Boolean(false));
                 }
-                return Err(anyhow!("Expected next value"));
+                return Err(anyhow!(
+                    "Expected next value (checked everything, found '{:?}')",
+                    json.peek()
+                ));
             }
             ParseState::Array => {
                 let mut contents = Vec::new();
                 if ']' == *char {
+                    _ = json.next().unwrap();
                     return Ok(JsonValue::Array(Box::new(contents)));
                 }
                 loop {
@@ -96,7 +116,7 @@ fn parse_next<'a, I: Iterator<Item = char>>(
                     match json.next() {
                         Some(']') => break,
                         Some(',') => continue,
-                        _ => bail!("Expected next value"),
+                        v => bail!("Expected comma or end bracket, found '{:?}'", v),
                     }
                 }
                 contents.shrink_to_fit();
@@ -105,6 +125,7 @@ fn parse_next<'a, I: Iterator<Item = char>>(
             ParseState::Object => {
                 let mut contents = HashMap::new();
                 if *char == '}' {
+                    _ = json.next().unwrap();
                     return Ok(JsonValue::Object(Box::new(contents)));
                 }
                 loop {
@@ -121,7 +142,7 @@ fn parse_next<'a, I: Iterator<Item = char>>(
                     match json.next() {
                         Some('}') => break,
                         Some(',') => continue,
-                        _ => bail!("Expected next value"),
+                        v => bail!("Expected comma or end brace, found {:?}", v),
                     }
                 }
                 return Ok(JsonValue::Object(Box::new(contents)));

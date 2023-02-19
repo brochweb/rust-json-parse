@@ -11,6 +11,8 @@ struct Args {
     /// Set to `-` for stdin
     #[arg(default_value = "-")]
     file: String,
+    #[arg(short, long)]
+    serde: bool,
 }
 
 fn main() -> Result<()> {
@@ -22,6 +24,10 @@ fn main() -> Result<()> {
     } else {
         std::fs::read_to_string(args.file)?
     };
-    let _ = parse(&json);
+    if args.serde {
+        let _ = serde_json::from_str::<serde_json::Value>(&json)?;
+    } else {
+        let _ = parse(&json)?;
+    }
     Ok(())
 }
