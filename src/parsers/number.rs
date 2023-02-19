@@ -18,7 +18,6 @@ pub fn read_number<I: Iterator<Item = u8>>(json: &mut MultiPeek<I>) -> Result<f6
             _ => break,
         }
     }
-    eprintln!("Number buf: {:x?}\nNumber length: {}\n", num_buf, num_len);
     let number = f64::from_str(std::str::from_utf8(&num_buf[0..num_len]).unwrap())?;
 
     Ok(number)
