@@ -18,11 +18,11 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
     let json = if &args.file == "-" {
-        let mut buf = String::new();
-        std::io::stdin().read_to_string(&mut buf)?;
+        let mut buf = Vec::new();
+        std::io::stdin().read_to_end(&mut buf)?;
         buf
     } else {
-        std::fs::read_to_string(args.file)?
+        std::fs::read(args.file)?
     };
     if args.serde {
         let _ = serde_json::from_str::<serde_json::Value>(&json)?;
