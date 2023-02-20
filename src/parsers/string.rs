@@ -17,9 +17,30 @@ pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
     }
     let mut buf: Vec<u8> = Vec::new_in(alloc);
     loop {
-        while json.peek_copy().map_or(false, |c| c != b'"' && c != b'\\') {
-            buf.push(json.next().unwrap());
-        }
+        let chunk = json.take_while_chunked::<8, _, _>(
+            |chunk| {
+                chunk[0] != b'"'
+                    && chunk[0] != b'\\'
+                    && chunk[1] != b'"'
+                    && chunk[1] != b'\\'
+                    && chunk[2] != b'"'
+                    && chunk[2] != b'\\'
+                    && chunk[3] != b'"'
+                    && chunk[3] != b'\\'
+                    && chunk[4] != b'"'
+                    && chunk[4] != b'\\'
+                    && chunk[5] != b'"'
+                    && chunk[5] != b'\\'
+                    && chunk[6] != b'"'
+                    && chunk[6] != b'\\'
+                    && chunk[7] != b'"'
+                    && chunk[7] != b'\\'
+            },
+            |itm| itm != b'"' && itm != b'\\',
+        );
+        buf.reserve_exact(chunk.len());
+        buf.extend_from_slice(chunk);
+
         match json.next() {
             Some(b'"') => break,
             Some(b'\\') => {
@@ -89,10 +110,11 @@ pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
                     _ => return Err(ParseError::InvalidStringEscape),
                 }
             }
-            Some(_) => unreachable!(),
+            Some(ch) => buf.push(ch),
             None => return Err(ParseError::UnexpectedEndOfFile),
         }
     }
+    buf.shrink_to_fit();
     Ok(String::from_utf8(buf).map_err(|e| ParseError::InvalidUtf8 {
         string: std::string::String::from_utf8_lossy(e.as_bytes()).to_string(),
     })?)
