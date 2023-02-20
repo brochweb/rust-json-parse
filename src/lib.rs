@@ -5,9 +5,11 @@ use bumpalo::collections::{String, Vec};
 use bumpalo::Bump;
 use hashbrown::hash_map::DefaultHashBuilder;
 use hashbrown::{BumpWrapper, HashMap};
-use itertools::{Itertools, MultiPeek};
 use parsers::{number::read_number, string::read_string};
-use utils::{peek_static, take_static};
+use slice_iter::{CopyIter, SliceIter};
+
+mod parsers;
+mod slice_iter;
 
 pub type JsonObject<'bump> =
     HashMap<String<'bump>, JsonValue<'bump>, DefaultHashBuilder, BumpWrapper<'bump>>;
@@ -54,13 +56,28 @@ pub enum ParseError {
     UnexpectedEndOfFile,
 }
 
-mod parsers;
-mod utils;
-
 enum ParseState {
     Value,
     Object,
     Array,
+}
+
+pub struct JsonDocument<'a> {
+    pub root: JsonValue<'a>,
+    allocator: Bump,
+}
+
+impl<'a> JsonDocument<'a> {
+    pub fn init() -> Self {
+        Self {
+            root: JsonValue::Null,
+            allocator: Bump::new(),
+        }
+    }
+    pub fn parse_slice(&'a mut self, slice: &[u8]) -> Result<&'a JsonValue<'a>, JsonError> {
+        self.root = parse(slice, &self.allocator)?;
+        Ok(&self.root)
+    }
 }
 
 pub fn parse<'a, 'bump>(
@@ -73,7 +90,7 @@ pub fn parse<'a, 'bump>(
         });
     }
 
-    let mut json = json_buf.into_iter().copied().multipeek();
+    let mut json = SliceIter::new(json_buf);
     ignore_ws(&mut json);
 
     match parse_next(&mut json, allocator, ParseState::Value) {
@@ -92,44 +109,42 @@ pub fn parse<'a, 'bump>(
     };
 }
 
-fn parse_next<'a, 'bump, I: Iterator<Item = u8>>(
-    json: &'a mut MultiPeek<I>,
+fn parse_next<'a, 'bump, I: CopyIter<'a, Item = u8>>(
+    json: &mut I,
     alloc: &'bump Bump,
     state: ParseState,
 ) -> JsonResult<JsonValue<'bump>> {
     ignore_ws(json);
-    if let Some(char) = json.peek() {
+    if let Some(char) = json.peek_copy() {
         match state {
             ParseState::Value => {
                 if is_string(char) {
-                    json.reset_peek();
                     return Ok(JsonValue::String(alloc.alloc(read_string(json, alloc)?)));
                 }
                 if is_number(char) {
-                    json.reset_peek();
                     return Ok(JsonValue::Number(read_number(json)?));
                 }
                 if is_array(char) {
-                    _ = json.next().unwrap();
+                    json.ignore_next();
                     return parse_next(json, alloc, ParseState::Array);
                 }
                 if is_object(char) {
-                    _ = json.next().unwrap();
+                    json.ignore_next();
                     return parse_next(json, alloc, ParseState::Object);
                 }
-                json.reset_peek();
-                let next_4: [u8; 4] =
-                    peek_static(json).map_or(Err(ParseError::UnexpectedEndOfFile), |v| Ok(v))?;
+                let next_4: [u8; 4] = json
+                    .peek_many()
+                    .map_or(Err(ParseError::UnexpectedEndOfFile), |v| Ok(v))?;
                 if &next_4 == b"true" {
-                    take_static::<4, _, _>(json);
+                    json.ignore_many(4);
                     return Ok(JsonValue::Boolean(true));
                 }
                 if &next_4 == b"null" {
-                    take_static::<4, _, _>(json);
+                    json.ignore_many(4);
                     return Ok(JsonValue::Null);
                 }
-                if &next_4 == b"fals" && json.peek() == Some(&b'e') {
-                    take_static::<5, _, _>(json);
+                if json.peek_many() == Some(*b"false") {
+                    json.ignore_many(5);
                     return Ok(JsonValue::Boolean(false));
                 }
                 return Err(ParseError::ExpectedNextValue {
@@ -138,7 +153,7 @@ fn parse_next<'a, 'bump, I: Iterator<Item = u8>>(
             }
             ParseState::Array => {
                 let mut contents = Vec::new_in(alloc);
-                if b']' == *char {
+                if b']' == char {
                     _ = json.next().unwrap();
                     return Ok(JsonValue::Array(alloc.alloc(contents)));
                 }
@@ -163,7 +178,7 @@ fn parse_next<'a, 'bump, I: Iterator<Item = u8>>(
             ParseState::Object => {
                 let mut contents: HashMap<String<'bump>, JsonValue<'bump>, _, BumpWrapper> =
                     HashMap::new_in(BumpWrapper(alloc));
-                if *char == b'}' {
+                if char == b'}' {
                     _ = json.next().unwrap();
                     return Ok(JsonValue::Object(alloc.alloc(contents)));
                 }
@@ -198,30 +213,30 @@ fn parse_next<'a, 'bump, I: Iterator<Item = u8>>(
     return Ok(JsonValue::Null);
 }
 
-fn ignore_ws<'a, I: Iterator<Item = u8>>(json: &'a mut MultiPeek<I>) {
-    json.reset_peek();
-    json.peeking_take_while(is_whitespace).for_each(|_| {});
-    json.reset_peek();
+fn ignore_ws<'a, I: CopyIter<'a, Item = u8>>(json: &mut I) {
+    while json.peek_copy().map_or(false, is_whitespace) {
+        json.ignore_next();
+    }
 }
 
-fn is_whitespace(char: &u8) -> bool {
-    *char == 0x0020 || *char == 0x000A || *char == 0x000D || *char == 0x0009
+fn is_whitespace(char: u8) -> bool {
+    char == 0x0020 || char == 0x000A || char == 0x000D || char == 0x0009
 }
 
-fn is_string(char: &u8) -> bool {
-    *char == b'"'
+fn is_string(char: u8) -> bool {
+    char == b'"'
 }
 
-fn is_object(char: &u8) -> bool {
-    *char == b'{'
+fn is_object(char: u8) -> bool {
+    char == b'{'
 }
 
-fn is_array(char: &u8) -> bool {
-    *char == b'['
+fn is_array(char: u8) -> bool {
+    char == b'['
 }
 
-fn is_number(char: &u8) -> bool {
-    (*char >= b'0' && *char <= b'9') || *char == b'-'
+fn is_number(char: u8) -> bool {
+    (char >= b'0' && char <= b'9') || char == b'-'
 }
 
 #[cfg(test)]

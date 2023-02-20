@@ -1,12 +1,12 @@
 use bumpalo::collections::{String, Vec};
 use bumpalo::Bump;
-use itertools::{Itertools, MultiPeek};
+use itertools::Itertools;
 
-use crate::utils::take_static;
+use crate::slice_iter::CopyIter;
 use crate::{JsonResult, ParseError};
 
-pub fn read_string<'a, 'b, I: Iterator<Item = u8>>(
-    json: &'a mut MultiPeek<I>,
+pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
+    json: &mut I,
     alloc: &'b Bump,
 ) -> JsonResult<String<'b>> {
     let c = json.next();
@@ -17,7 +17,9 @@ pub fn read_string<'a, 'b, I: Iterator<Item = u8>>(
     }
     let mut buf: Vec<u8> = Vec::new_in(alloc);
     loop {
-        buf.extend(json.peeking_take_while(|c| *c != b'"' && *c != b'\\'));
+        while json.peek_copy().map_or(false, |c| c != b'"' && c != b'\\') {
+            buf.push(json.next().unwrap());
+        }
         match json.next() {
             Some(b'"') => break,
             Some(b'\\') => {
@@ -32,7 +34,8 @@ pub fn read_string<'a, 'b, I: Iterator<Item = u8>>(
                     b'r' => buf.push(0x0D), // Carriage return char
                     b't' => buf.push(0x09), // Tab char
                     b'u' => {
-                        let code = take_static::<4, _, _>(json)
+                        let code = json
+                            .take_many::<4>()
                             .map_or(Err(ParseError::InvalidStringEscape), |v| Ok(v))?;
                         let mut codepoint = [
                             u16::from_str_radix(
@@ -48,10 +51,10 @@ pub fn read_string<'a, 'b, I: Iterator<Item = u8>>(
                             0,
                         ];
                         let mut utf16_len: usize = 1;
-                        if Some(&b'\\') == json.peek() && Some(&b'u') == json.peek() {
-                            _ = json.next().unwrap();
-                            _ = json.next().unwrap();
-                            let second_code = take_static::<4, _, _>(json)
+                        if Some(b'\\') == json.peek_copy() && Some(b'u') == json.peek_copy() {
+                            json.ignore_many(2);
+                            let second_code = json
+                                .take_many::<4>()
                                 .map_or(Err(ParseError::InvalidStringEscape), |v| Ok(v))?;
                             codepoint[1] = u16::from_str_radix(
                                 &std::str::from_utf8(&second_code).map_err(|_| {

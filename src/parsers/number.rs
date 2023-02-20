@@ -1,14 +1,12 @@
 use std::str::FromStr;
 
-use itertools::MultiPeek;
+use crate::{slice_iter::CopyIter, JsonResult, ParseError};
 
-use crate::{JsonResult, ParseError};
-
-pub fn read_number<I: Iterator<Item = u8>>(json: &mut MultiPeek<I>) -> JsonResult<f64> {
+pub fn read_number<'a, I: CopyIter<'a, Item = u8>>(json: &mut I) -> JsonResult<f64> {
     let mut num_buf: [u8; 320] = [0; 320];
     let mut num_len: usize = 0;
-    while let Some(byte) = json.peek() {
-        match *byte {
+    while let Some(byte) = json.peek_copy() {
+        match byte {
             b'0'..=b'9' | b'.' | b'e' | b'E' | b'-' | b'+' => {
                 if num_len >= num_buf.len() {
                     return Err(ParseError::InvalidNumberLiteral);

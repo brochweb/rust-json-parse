@@ -1,9 +1,8 @@
 use std::io::Read;
 
 use anyhow::Result;
-use bumpalo::Bump;
 use clap::Parser;
-use rs_json::parse;
+use rs_json::JsonDocument;
 
 #[derive(clap::Parser)]
 struct Args {
@@ -28,8 +27,8 @@ fn main() -> Result<()> {
     if args.serde {
         let _ = serde_json::from_slice::<serde_json::Value>(&json)?;
     } else {
-        let bump = Bump::new();
-        let _ = parse(&json, &bump)?;
+        let mut doc = JsonDocument::init();
+        doc.parse_slice(&json)?;
     }
     Ok(())
 }
