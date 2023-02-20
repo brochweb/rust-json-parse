@@ -1,13 +1,21 @@
-use anyhow::{anyhow, bail, Result};
+use bumpalo::collections::{String, Vec};
+use bumpalo::Bump;
 use itertools::{Itertools, MultiPeek};
 
 use crate::utils::take_static;
+use crate::{JsonResult, ParseError};
 
-pub fn read_string<'a, I: Iterator<Item = u8>>(json: &'a mut MultiPeek<I>) -> Result<String> {
-    if Some(b'"') != json.next() {
-        bail!("String must start with \"");
+pub fn read_string<'a, 'b, I: Iterator<Item = u8>>(
+    json: &'a mut MultiPeek<I>,
+    alloc: &'b Bump,
+) -> JsonResult<String<'b>> {
+    let c = json.next();
+    if Some(b'"') != c {
+        return Err(ParseError::StringQuote {
+            found: c.map(|v| v as char),
+        });
     }
-    let mut buf: Vec<u8> = Vec::new();
+    let mut buf: Vec<u8> = Vec::new_in(alloc);
     loop {
         buf.extend(json.peeking_take_while(|c| *c != b'"' && *c != b'\\'));
         match json.next() {
@@ -15,7 +23,7 @@ pub fn read_string<'a, I: Iterator<Item = u8>>(json: &'a mut MultiPeek<I>) -> Re
             Some(b'\\') => {
                 let escape = json
                     .next()
-                    .map_or(Err(anyhow!("Invalid string escape")), |v| Ok(v))?;
+                    .map_or(Err(ParseError::InvalidStringEscape), |v| Ok(v))?;
                 match escape {
                     b'"' | b'\\' | b'/' => buf.push(escape),
                     b'b' => buf.push(0x08), // Backspace char
@@ -25,17 +33,36 @@ pub fn read_string<'a, I: Iterator<Item = u8>>(json: &'a mut MultiPeek<I>) -> Re
                     b't' => buf.push(0x09), // Tab char
                     b'u' => {
                         let code = take_static::<4, _, _>(json)
-                            .map_or(Err(anyhow!("Invalid string escape")), |v| Ok(v))?;
-                        let mut codepoint =
-                            [u16::from_str_radix(&std::str::from_utf8(&code)?, 16)?, 0];
+                            .map_or(Err(ParseError::InvalidStringEscape), |v| Ok(v))?;
+                        let mut codepoint = [
+                            u16::from_str_radix(
+                                &std::str::from_utf8(&code).map_err(|_| {
+                                    ParseError::InvalidUtf8 {
+                                        string: std::string::String::from_utf8_lossy(&code)
+                                            .to_string(),
+                                    }
+                                })?,
+                                16,
+                            )
+                            .map_err(|_| ParseError::InvalidStringEscape)?,
+                            0,
+                        ];
                         let mut utf16_len: usize = 1;
                         if Some(&b'\\') == json.peek() && Some(&b'u') == json.peek() {
                             _ = json.next().unwrap();
                             _ = json.next().unwrap();
                             let second_code = take_static::<4, _, _>(json)
-                                .map_or(Err(anyhow!("Invalid string escape")), |v| Ok(v))?;
-                            codepoint[1] =
-                                u16::from_str_radix(&std::str::from_utf8(&second_code)?, 16)?;
+                                .map_or(Err(ParseError::InvalidStringEscape), |v| Ok(v))?;
+                            codepoint[1] = u16::from_str_radix(
+                                &std::str::from_utf8(&second_code).map_err(|_| {
+                                    ParseError::InvalidUtf8 {
+                                        string: std::string::String::from_utf8_lossy(&second_code)
+                                            .to_string(),
+                                    }
+                                })?,
+                                16,
+                            )
+                            .map_err(|_| ParseError::InvalidStringEscape)?;
                             utf16_len += 1;
                         }
                         std::char::decode_utf16(codepoint[0..utf16_len].into_iter().copied())
@@ -50,18 +77,20 @@ pub fn read_string<'a, I: Iterator<Item = u8>>(json: &'a mut MultiPeek<I>) -> Re
                                         buf.push(byte.unpaired_surrogate() as u8);
                                         Ok(())
                                     } else {
-                                        bail!("Invalid string escape");
+                                        return Err(ParseError::InvalidStringEscape);
                                     }
                                 }
                             })
                             .try_collect()?;
                     }
-                    _ => bail!("Invalid string escape"),
+                    _ => return Err(ParseError::InvalidStringEscape),
                 }
             }
             Some(_) => unreachable!(),
-            None => bail!("Expected end of string"),
+            None => return Err(ParseError::UnexpectedEndOfFile),
         }
     }
-    Ok(String::from_utf8(buf)?)
+    Ok(String::from_utf8(buf).map_err(|e| ParseError::InvalidUtf8 {
+        string: std::string::String::from_utf8_lossy(e.as_bytes()).to_string(),
+    })?)
 }

@@ -8,6 +8,9 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = "1.0.69"
+bumpalo = { version = "3.12.0", features = ["collections"] }
 clap = {version = "4", features = ["derive"]}
+hashbrown = { version = "0.13.2", features = ["bumpalo"] }
 itertools = "0.10.5"
 serde_json = "1.0.93"
+thiserror = "1.0.38"

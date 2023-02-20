@@ -1,6 +1,7 @@
 use std::io::Read;
 
 use anyhow::Result;
+use bumpalo::Bump;
 use clap::Parser;
 use rs_json::parse;
 
@@ -27,7 +28,8 @@ fn main() -> Result<()> {
     if args.serde {
         let _ = serde_json::from_slice::<serde_json::Value>(&json)?;
     } else {
-        let _ = parse(&json)?;
+        let bump = Bump::new();
+        let _ = parse(&json, &bump)?;
     }
     Ok(())
 }
