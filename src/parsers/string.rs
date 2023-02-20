@@ -51,7 +51,7 @@ pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
                             0,
                         ];
                         let mut utf16_len: usize = 1;
-                        if Some(b'\\') == json.peek_copy() && Some(b'u') == json.peek_copy() {
+                        if json.peek_many_ref(2) == Some(b"\\u") {
                             json.ignore_many(2);
                             let second_code = json
                                 .take_many::<4>()

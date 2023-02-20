@@ -143,7 +143,7 @@ fn parse_next<'a, 'bump, I: CopyIter<'a, Item = u8>>(
                     json.ignore_many(4);
                     return Ok(JsonValue::Null);
                 }
-                if json.peek_many() == Some(*b"false") {
+                if json.peek_many_ref(5) == Some(b"false") {
                     json.ignore_many(5);
                     return Ok(JsonValue::Boolean(false));
                 }
