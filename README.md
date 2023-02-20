@@ -2,7 +2,7 @@
 
 | file                     | implementation | time (secs) | memory (KB) |
 |:------------------------:|:--------------:|:-----------:|:-----------:|
-| tests/ascii_strings.json | rs-json        | 0.091       | 101008      |
+| tests/ascii_strings.json | rs-json        | 0.090       | 101008      |
 | tests/ascii_strings.json | serde_json     | 0.093       | 101568      |
 | tests/numbers.json       | rs-json        | 0.106       | 85504       |
 | tests/numbers.json       | serde_json     | 0.173       | 108144      |
