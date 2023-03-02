@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn string() {
-        // "string, \"string\", string—🎸🦕"
+        // string, "string", string—🎸🦕㻘\x03\x0C
         let bump = Bump::new();
         let val = parse(
             "\"string, \\\"string\\\", string—🎸\\uD83E\\uDD95\\u3ED8\\u0003\\f\"".as_bytes(),
