@@ -1,6 +1,6 @@
 [package]
-name = "rs-json"
-version = "0.2.0"
+name = "rust-json-parse"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
@@ -13,4 +13,6 @@ clap = {version = "4", features = ["derive"]}
 hashbrown = { version = "0.13", features = ["bumpalo"] }
 itertools = "0.10"
 serde_json = "1"
+simd-json = "0.7"
+snmalloc-rs = "0.3"
 thiserror = "1"
