@@ -39,7 +39,9 @@ pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
             |itm| itm != b'"' && itm != b'\\',
         );
         buf.reserve_exact(chunk.len());
-        buf.extend_from_slice(chunk);
+        let offset = buf.len();
+        unsafe { buf.set_len(offset + chunk.len()) };
+        buf[offset..(offset + chunk.len())].copy_from_slice(chunk);
 
         match json.next() {
             Some(b'"') => break,
@@ -115,7 +117,14 @@ pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
         }
     }
     buf.shrink_to_fit();
-    Ok(String::from_utf8(buf).map_err(|e| ParseError::InvalidUtf8 {
-        string: std::string::String::from_utf8_lossy(e.as_bytes()).to_string(),
-    })?)
+    // Ok(String::from_utf8(buf).map_err(|e| ParseError::InvalidUtf8 {
+    //     string: std::string::String::from_utf8_lossy(e.as_bytes()).to_string(),
+    // })?)
+    if simdutf8::basic::from_utf8(&buf).is_ok() {
+        Ok(unsafe { String::from_utf8_unchecked(buf) })
+    } else {
+        Err(ParseError::InvalidUtf8 {
+            string: std::string::String::from_utf8_lossy(&buf).to_string(),
+        })
+    }
 }

@@ -1,3 +1,4 @@
+use std::mem;
 use std::string::String as StdString;
 use std::vec::Vec as StdVec;
 
@@ -62,21 +63,50 @@ enum ParseState {
     Array,
 }
 
-pub struct JsonDocument<'a> {
-    pub root: JsonValue<'a>,
+pub struct JsonDocument {
+    root: &'static mut JsonValue<'static>,
     allocator: Bump,
 }
 
-impl<'a> JsonDocument<'a> {
+impl JsonDocument {
     pub fn init() -> Self {
+        let allocator = Bump::new();
         Self {
-            root: JsonValue::Null,
-            allocator: Bump::new(),
+            root: unsafe { mem::transmute(allocator.alloc(JsonValue::Null)) },
+            allocator,
         }
     }
-    pub fn parse_slice(&'a mut self, slice: &[u8]) -> Result<&'a JsonValue<'a>, JsonError> {
-        self.root = parse(slice, &self.allocator)?;
-        Ok(&self.root)
+    pub fn parse_slice<'a>(&'a mut self, slice: &[u8]) -> Result<&'a JsonValue<'a>, JsonError> {
+        let json_val = parse(slice, &self.allocator)?;
+        self.root = unsafe { mem::transmute(self.allocator.alloc(json_val)) };
+        Ok(unsafe { mem::transmute(&*self.root) })
+    }
+    pub fn parse_create(slice: &[u8]) -> Result<Self, JsonError> {
+        let allocator = Bump::new();
+        let json_val = parse(slice, &allocator)?;
+        Ok(Self {
+            root: unsafe { mem::transmute(allocator.alloc(json_val)) },
+            allocator,
+        })
+    }
+    pub fn root<'a>(&'a self) -> &'a JsonValue<'a> {
+        unsafe { mem::transmute(&*self.root) }
+    }
+    pub fn root_mut<'a>(&'a mut self) -> &'a mut JsonValue<'a> {
+        *unsafe {
+            mem::transmute::<&mut &'static mut JsonValue<'static>, &'a mut &'a mut JsonValue<'a>>(
+                &mut self.root,
+            )
+        }
+    }
+    pub fn alloc<'a, T>(&'a self, thing: T) -> &'a mut T {
+        self.allocator.alloc(thing)
+    }
+    pub fn str<'a>(&'a self, str: &str) -> String<'a> {
+        String::from_str_in(str, &self.allocator)
+    }
+    pub fn bump<'a>(&'a self) -> &'a Bump {
+        &self.allocator
     }
 }
 
@@ -311,5 +341,65 @@ mod tests {
             },
             _ => panic!("Expected object"),
         }
+    }
+
+    #[test]
+    fn json_object_document() {
+        let string = b"{\n\t\t\"name\":\"Steve\"\n\t}";
+        let ret = JsonDocument::parse_create(&string[..]).unwrap();
+        let root = ret.root();
+        match &root {
+            JsonValue::Object(obj) => match obj.get("name") {
+                Some(JsonValue::String(str)) => {
+                    assert_eq!(str.as_str(), "Steve");
+                }
+                _ => panic!("Expect name field to be string"),
+            },
+            _ => panic!("Expected object"),
+        }
+    }
+
+    #[test]
+    fn mutable_json_doc() {
+        let string = br#"
+{
+    "name": "Steve",
+    "nickname": "Cementhead"
+}"#;
+        let mut ret = JsonDocument::parse_create(&string[..]).unwrap();
+        let bump = Bump::new();
+        let root = ret.root_mut();
+        match root {
+            JsonValue::Object(obj) => {
+                match obj.get("name").expect("Expected to have name property") {
+                    JsonValue::String(str) => assert_eq!(*str, "Steve"),
+                    _ => panic!("Expected string"),
+                }
+                assert_eq!(
+                    Some(&JsonValue::String(
+                        bump.alloc(String::from_str_in("Cementhead", &bump))
+                    )),
+                    obj.get("nickname")
+                );
+                obj.insert(
+                    String::from_str_in("nickname", &bump),
+                    JsonValue::String(
+                        bump.alloc(String::from_utf8_lossy_in(&[0x61; 50000], &bump)),
+                    ),
+                );
+            }
+            _ => panic!("Expected object"),
+        }
+        drop(root);
+        let root = ret.root();
+        assert_eq!(
+            Some(&JsonValue::String(
+                bump.alloc(String::from_utf8_lossy_in(&[0x61; 50000], &bump))
+            )),
+            match &root {
+                JsonValue::Object(obj) => obj.get("nickname"),
+                _ => panic!("Expected object"),
+            }
+        );
     }
 }

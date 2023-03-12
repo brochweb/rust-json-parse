@@ -1,6 +1,6 @@
 [package]
 name = "rust-json-parse"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
@@ -8,11 +8,12 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = "1"
-bumpalo = { version = "3", features = ["collections"] }
+bumpalo = { version = "3", features = ["collections", "boxed"] }
 clap = {version = "4", features = ["derive"]}
 hashbrown = { version = "0.13", features = ["bumpalo"] }
 itertools = "0.10"
 serde_json = "1"
+simdutf8 = { version = "0.1", features = ["aarch64_neon"] }
 simd-json = "0.7"
 snmalloc-rs = "0.3"
 thiserror = "1"

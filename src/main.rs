@@ -20,6 +20,7 @@ struct Args {
     simd: bool,
 }
 
+#[allow(unused_mut)]
 fn main() -> Result<()> {
     let args = Args::parse();
     let mut json = if &args.file == "-" {
@@ -32,10 +33,9 @@ fn main() -> Result<()> {
     if args.serde {
         let _ = serde_json::from_slice::<serde_json::Value>(&json)?;
     } else if args.simd {
-        let _ = simd_json::from_slice::<serde_json::Value>(&mut json)?;
+        // let _ = simd_json::from_slice::<serde_json::Value>(&mut json)?;
     } else {
-        let mut doc = JsonDocument::init();
-        doc.parse_slice(&json)?;
+        let _ = JsonDocument::parse_create(&json)?;
     }
     Ok(())
 }

@@ -62,46 +62,32 @@ impl<'a, T: Copy> SliceIter<'a, T> {
 }
 
 impl<'a, T: Copy> CopyIter<'a> for SliceIter<'a, T> {
+    #[inline]
     fn peek_copy(&self) -> Option<T> {
-        if self.index < self.slice.len() {
-            Some(self.slice[self.index])
-        } else {
-            None
-        }
+        self.slice.get(self.index).map(|v| *v)
     }
 
     fn peek_at_copy(&self, index: usize) -> Option<Self::Item> {
-        if self.index + index < self.slice.len() {
-            Some(self.slice[self.index + index])
-        } else {
-            None
-        }
+        self.slice.get(self.index + index).map(|v| *v)
     }
 
+    #[inline]
     fn peek_many<const N: usize>(&self) -> Option<[T; N]> {
-        if self.index + N <= self.slice.len() {
-            Some(self.slice[self.index..self.index + N].try_into().unwrap())
-        } else {
-            None
-        }
+        self.slice
+            .get(self.index..self.index + N)
+            .map(|v| v.try_into().unwrap())
     }
 
     fn peek_many_ref(&self, len: usize) -> Option<&'a [T]> {
-        if self.index + len <= self.slice.len() {
-            Some(&self.slice[self.index..self.index + len])
-        } else {
-            None
-        }
+        self.slice.get(self.index..self.index + len)
     }
 
+    #[inline]
     fn take_many<const N: usize>(&mut self) -> Option<[T; N]> {
-        if self.index + N <= self.slice.len() {
-            let ret = Some(self.slice[self.index..self.index + N].try_into().unwrap());
+        self.peek_many::<N>().map(|v| {
             self.index += N;
-            return ret;
-        } else {
-            None
-        }
+            v
+        })
     }
 
     fn ignore_next(&mut self) {
@@ -118,6 +104,7 @@ impl<'a, T: Copy> CopyIter<'a> for SliceIter<'a, T> {
         }
     }
 
+    #[inline]
     fn take_while_chunked<
         const N: usize,
         F1: Fn([Self::Item; N]) -> bool,
