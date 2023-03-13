@@ -1,9 +1,11 @@
-#[cfg(target_arch = "aarch64")]
-use std::arch::aarch64::*;
-#[cfg(target_arch = "x86")]
-use std::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
+// #[cfg(target_arch = "aarch64")]
+// use std::arch::aarch64::*;
+// #[cfg(target_arch = "x86")]
+// use std::arch::x86::*;
+// #[cfg(target_arch = "x86_64")]
+// use std::arch::x86_64::*;
+
+use std::simd::{u8x16, SimdPartialEq};
 
 #[derive(Debug)]
 pub struct SliceIter<'a, T: Copy> {
@@ -167,25 +169,22 @@ impl<'a, T: Copy> Iterator for SliceIter<'a, T> {
 }
 
 impl<'a> SliceIter<'a, u8> {
-    #[cfg(target_arch = "aarch64")]
     pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
         &mut self,
-        conditions: [uint8x16_t; N],
+        conditions: [u8x16; N],
         pred: P,
     ) -> &[u8] {
         let op_slice = &self.slice[self.index..];
         let mut len = 0;
-        unsafe {
-            'outer: while self.index < (self.slice.len() - 8) {
-                let vector = vld1q_u8(self.slice[self.index..].as_ptr());
-                for condition in conditions {
-                    if vmaxvq_u8(vceqq_u8(vector, condition)) != 0 {
-                        break 'outer;
-                    }
+        'outer: while self.index < (self.slice.len() - 16) {
+            let vector = u8x16::from_slice(&self.slice[self.index..]);
+            for condition in conditions {
+                if vector.simd_eq(condition).any() {
+                    break 'outer;
                 }
-                len += 8;
-                self.index += 8;
             }
+            len += 8;
+            self.index += 8;
         }
         while let Some(byte) = self.peek_copy() {
             if pred(byte) {
@@ -197,56 +196,86 @@ impl<'a> SliceIter<'a, u8> {
         }
         &op_slice[0..len]
     }
+    // #[cfg(target_arch = "aarch64")]
+    // pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
+    //     &mut self,
+    //     conditions: [uint8x16_t; N],
+    //     pred: P,
+    // ) -> &[u8] {
+    //     let op_slice = &self.slice[self.index..];
+    //     let mut len = 0;
+    //     unsafe {
+    //         'outer: while self.index < (self.slice.len() - 8) {
+    //             let vector = vld1q_u8(self.slice[self.index..].as_ptr());
+    //             for condition in conditions {
+    //                 if vmaxvq_u8(vceqq_u8(vector, condition)) != 0 {
+    //                     break 'outer;
+    //                 }
+    //             }
+    //             len += 8;
+    //             self.index += 8;
+    //         }
+    //     }
+    //     while let Some(byte) = self.peek_copy() {
+    //         if pred(byte) {
+    //             self.index += 1;
+    //             len += 1;
+    //         } else {
+    //             break;
+    //         }
+    //     }
+    //     &op_slice[0..len]
+    // }
 
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
-        &mut self,
-        conditions: [__m128i; N],
-        pred: P,
-    ) -> &[u8] {
-        let op_slice = &self.slice[self.index..];
-        let mut len = 0;
-        unsafe {
-            'outer: while self.index < (self.slice.len() - 16) {
-                let vector = _mm_set_epi8(
-                    self.slice[self.index + 0] as i8,
-                    self.slice[self.index + 1] as i8,
-                    self.slice[self.index + 2] as i8,
-                    self.slice[self.index + 3] as i8,
-                    self.slice[self.index + 4] as i8,
-                    self.slice[self.index + 5] as i8,
-                    self.slice[self.index + 6] as i8,
-                    self.slice[self.index + 7] as i8,
-                    self.slice[self.index + 8] as i8,
-                    self.slice[self.index + 9] as i8,
-                    self.slice[self.index + 10] as i8,
-                    self.slice[self.index + 11] as i8,
-                    self.slice[self.index + 12] as i8,
-                    self.slice[self.index + 13] as i8,
-                    self.slice[self.index + 14] as i8,
-                    self.slice[self.index + 15] as i8,
-                );
-                for condition in conditions {
-                    let result = _mm_cmpeq_epi8(vector, condition);
-                    if _mm_movemask_epi8(result) != 0 {
-                        // _mm_movemask_epi8 takes the most significant digit from each byte in the register
-                        // and puts it in an i32. Because result is the result of a equality comparison, each byte
-                        // is either all ones or all zeroes, so testing only the first bit of each byte suffices
-                        break 'outer;
-                    }
-                }
-                len += 16;
-                self.index += 16;
-            }
-        }
-        while let Some(byte) = self.peek_copy() {
-            if pred(byte) {
-                self.index += 1;
-                len += 1;
-            } else {
-                break;
-            }
-        }
-        &op_slice[0..len]
-    }
+    // #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    // pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
+    //     &mut self,
+    //     conditions: [__m128i; N],
+    //     pred: P,
+    // ) -> &[u8] {
+    //     let op_slice = &self.slice[self.index..];
+    //     let mut len = 0;
+    //     unsafe {
+    //         'outer: while self.index < (self.slice.len() - 16) {
+    //             let vector = _mm_set_epi8(
+    //                 self.slice[self.index + 0] as i8,
+    //                 self.slice[self.index + 1] as i8,
+    //                 self.slice[self.index + 2] as i8,
+    //                 self.slice[self.index + 3] as i8,
+    //                 self.slice[self.index + 4] as i8,
+    //                 self.slice[self.index + 5] as i8,
+    //                 self.slice[self.index + 6] as i8,
+    //                 self.slice[self.index + 7] as i8,
+    //                 self.slice[self.index + 8] as i8,
+    //                 self.slice[self.index + 9] as i8,
+    //                 self.slice[self.index + 10] as i8,
+    //                 self.slice[self.index + 11] as i8,
+    //                 self.slice[self.index + 12] as i8,
+    //                 self.slice[self.index + 13] as i8,
+    //                 self.slice[self.index + 14] as i8,
+    //                 self.slice[self.index + 15] as i8,
+    //             );
+    //             for condition in conditions {
+    //                 let result = _mm_cmpeq_epi8(vector, condition);
+    //                 if _mm_movemask_epi8(result) != 0 {
+    //                     // _mm_movemask_epi8 takes the most significant digit from each byte in the register
+    //                     // and puts it in an i32. Because result is the result of a equality comparison, each byte
+    //                     // is either all ones or all zeroes, so testing only the first bit of each byte suffices
+    //                     break 'outer;
+    //                 }
+    //             }
+    //             len += 16;
+    //             self.index += 16;
+    //         }
+    //     }
+    //     while let Some(byte) = self.peek_copy() {
+    //         if pred(byte) {
+    //             self.index += 1;
+    //             len += 1;
+    //         } else {
+    //             break;
+    //         }
+    //     }
+    //     &op_slice[0..len]
+    // }
 }

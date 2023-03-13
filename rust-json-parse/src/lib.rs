@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 use std::mem;
 use std::string::String as StdString;
 use std::vec::Vec as StdVec;

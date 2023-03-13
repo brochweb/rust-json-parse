@@ -1,9 +1,4 @@
-#[cfg(target_arch = "aarch64")]
-use std::arch::aarch64::vld1q_dup_u8;
-#[cfg(target_arch = "x86")]
-use std::arch::x86::_mm_set1_epi8;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::_mm_set1_epi8;
+use std::simd::u8x16;
 
 use bumpalo::collections::{String, Vec};
 use bumpalo::Bump;
@@ -23,10 +18,7 @@ pub fn read_string<'a, 'b>(
         });
     }
     let mut buf: Vec<u8> = Vec::new_in(alloc);
-    #[cfg(target_arch = "aarch64")]
-    let conditions = unsafe { [vld1q_dup_u8(&b'"'), vld1q_dup_u8(&b'\\')] };
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    let conditions = unsafe { [_mm_set1_epi8(b'"' as i8), _mm_set1_epi8(b'\\' as i8)] };
+    let conditions = [u8x16::splat(b'"'), u8x16::splat(b'\\')];
     'outer: loop {
         let chunk = json.take_while_ne_simd(conditions, |ch| ch != b'"' && ch != b'\\');
         buf.reserve_exact(chunk.len());
