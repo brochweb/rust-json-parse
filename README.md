@@ -7,19 +7,19 @@ This is a research project, it is not tested for production, but only provided a
 
 |           file           | implementation  | time (secs) | memory (KB) |
 | :----------------------: | :-------------: | :---------: | :---------: |
-| tests/ascii_strings.json | rust-json-parse |    0.057    |   101520    |
+| tests/ascii_strings.json | rust-json-parse |    0.050    |   101536    |
 | tests/ascii_strings.json |   serde_json    |    0.079    |   104352    |
 | tests/ascii_strings.json |    simd-json    |    0.073    |   152016    |
-|    tests/numbers.json    | rust-json-parse |    0.094    |    86096    |
+|    tests/numbers.json    | rust-json-parse |    0.100    |    86064    |
 |    tests/numbers.json    |   serde_json    |    0.119    |   109216    |
 |    tests/numbers.json    |    simd-json    |    0.100    |   152336    |
-|    tests/random.json     | rust-json-parse |    0.292    |   241056    |
+|    tests/random.json     | rust-json-parse |    0.307    |   241072    |
 |    tests/random.json     |   serde_json    |    0.341    |   180688    |
 |    tests/random.json     |    simd-json    |    0.317    |   243104    |
 |     tests/food.json      | rust-json-parse |    0.004    |    2288     |
 |     tests/food.json      |   serde_json    |    0.004    |    2176     |
 |     tests/food.json      |    simd-json    |    0.005    |    2464     |
-|    tests/geojson.json    | rust-json-parse |    0.044    |    59728    |
+|    tests/geojson.json    | rust-json-parse |    0.045    |    59728    |
 |    tests/geojson.json    |   serde_json    |    0.070    |    67568    |
 |    tests/geojson.json    |    simd-json    |    0.068    |    84016    |
 

@@ -1,3 +1,12 @@
+#[cfg(target_arch = "aarch64")]
+use std::arch::aarch64::{uint8x8_t, vceq_u8, vld1_u8};
+#[cfg(target_arch = "x86")]
+use std::arch::x86::{__m128i, _mm_cmpeq_epi8, _mm_set_epi8};
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::{__m128i, _mm_cmpeq_epi8, _mm_set_epi8};
+
+use std::mem;
+
 #[derive(Debug)]
 pub struct SliceIter<'a, T: Copy> {
     slice: &'a [T],
@@ -156,5 +165,86 @@ impl<'a, T: Copy> Iterator for SliceIter<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.slice.len() - self.index;
         (len, Some(len))
+    }
+}
+
+impl<'a> SliceIter<'a, u8> {
+    #[cfg(target_arch = "aarch64")]
+    pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
+        &mut self,
+        conditions: [uint8x8_t; N],
+        pred: P,
+    ) -> &[u8] {
+        let op_slice = &self.slice[self.index..];
+        let mut len = 0;
+        unsafe {
+            'outer: while self.index < (self.slice.len() - 8) {
+                let vector = vld1_u8(self.slice[self.index..].as_ptr());
+                for condition in conditions {
+                    if mem::transmute::<_, u64>(vceq_u8(vector, condition)) != 0 {
+                        break 'outer;
+                    }
+                }
+                len += 8;
+                self.index += 8;
+            }
+        }
+        while let Some(byte) = self.peek_copy() {
+            if pred(byte) {
+                self.index += 1;
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        &op_slice[0..len]
+    }
+
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
+        &mut self,
+        conditions: [__m128i; N],
+        pred: P,
+    ) -> &[u8] {
+        let op_slice = &self.slice[self.index..];
+        let mut len = 0;
+        unsafe {
+            'outer: while self.index < (self.slice.len() - 16) {
+                let vector = _mm_set_epi8(
+                    self.slice[self.index + 0] as i8,
+                    self.slice[self.index + 1] as i8,
+                    self.slice[self.index + 2] as i8,
+                    self.slice[self.index + 3] as i8,
+                    self.slice[self.index + 4] as i8,
+                    self.slice[self.index + 5] as i8,
+                    self.slice[self.index + 6] as i8,
+                    self.slice[self.index + 7] as i8,
+                    self.slice[self.index + 8] as i8,
+                    self.slice[self.index + 9] as i8,
+                    self.slice[self.index + 10] as i8,
+                    self.slice[self.index + 11] as i8,
+                    self.slice[self.index + 12] as i8,
+                    self.slice[self.index + 13] as i8,
+                    self.slice[self.index + 14] as i8,
+                    self.slice[self.index + 15] as i8,
+                );
+                for condition in conditions {
+                    if mem::transmute::<_, u128>(_mm_cmpeq_epi8(vector, condition)) != 0 {
+                        break 'outer;
+                    }
+                }
+                len += 16;
+                self.index += 16;
+            }
+        }
+        while let Some(byte) = self.peek_copy() {
+            if pred(byte) {
+                self.index += 1;
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        &op_slice[0..len]
     }
 }

@@ -1,12 +1,19 @@
+#[cfg(target_arch = "aarch64")]
+use std::arch::aarch64::vld1_dup_u8;
+#[cfg(target_arch = "x86")]
+use std::arch::x86::_mm_set1_epi8;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::_mm_set1_epi8;
+
 use bumpalo::collections::{String, Vec};
 use bumpalo::Bump;
 use itertools::Itertools;
 
-use crate::slice_iter::CopyIter;
+use crate::slice_iter::{CopyIter, SliceIter};
 use crate::{JsonResult, ParseError};
 
-pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
-    json: &mut I,
+pub fn read_string<'a, 'b>(
+    json: &mut SliceIter<'a, u8>,
     alloc: &'b Bump,
 ) -> JsonResult<String<'b>> {
     let c = json.next();
@@ -16,32 +23,20 @@ pub fn read_string<'a, 'b, I: CopyIter<'a, Item = u8>>(
         });
     }
     let mut buf: Vec<u8> = Vec::new_in(alloc);
+    #[cfg(target_arch = "aarch64")]
+    let conditions = unsafe { [vld1_dup_u8(&b'"'), vld1_dup_u8(&b'\\')] };
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    let conditions = unsafe { [_mm_set1_epi8(b'"' as i8), _mm_set1_epi8(b'\\' as i8)] };
     loop {
-        let chunk = json.take_while_chunked::<8, _, _>(
-            |chunk| {
-                chunk[0] != b'"'
-                    && chunk[0] != b'\\'
-                    && chunk[1] != b'"'
-                    && chunk[1] != b'\\'
-                    && chunk[2] != b'"'
-                    && chunk[2] != b'\\'
-                    && chunk[3] != b'"'
-                    && chunk[3] != b'\\'
-                    && chunk[4] != b'"'
-                    && chunk[4] != b'\\'
-                    && chunk[5] != b'"'
-                    && chunk[5] != b'\\'
-                    && chunk[6] != b'"'
-                    && chunk[6] != b'\\'
-                    && chunk[7] != b'"'
-                    && chunk[7] != b'\\'
-            },
-            |itm| itm != b'"' && itm != b'\\',
-        );
+        let chunk = json.take_while_ne_simd(conditions, |ch| ch != b'"' && ch != b'\\');
         buf.reserve_exact(chunk.len());
         let offset = buf.len();
-        unsafe { buf.set_len(offset + chunk.len()) };
-        buf[offset..(offset + chunk.len())].copy_from_slice(chunk);
+        unsafe {
+            buf.as_mut_ptr()
+                .add(offset)
+                .copy_from_nonoverlapping(chunk.as_ptr(), chunk.len());
+            buf.set_len(offset + chunk.len());
+        };
 
         match json.next() {
             Some(b'"') => break,

@@ -139,8 +139,8 @@ pub fn parse<'a, 'bump>(
     };
 }
 
-fn parse_next<'a, 'bump, I: CopyIter<'a, Item = u8>>(
-    json: &mut I,
+fn parse_next<'a, 'bump>(
+    json: &mut SliceIter<'a, u8>,
     alloc: &'bump Bump,
     state: ParseState,
 ) -> JsonResult<JsonValue<'bump>> {
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn json_array() {
         let mut string = "[5   ,\n\n".repeat(100);
-        string.push_str("[\"algo\", 3.1415926535, 5.2e+50, \"\",null,true,false,[],[],[],[[[[[[[[[[[[[[]]]]]]]]]]]]]]]");
+        string.push_str("[\"algo muy interesante. Ay si, ya tu sabes. ¡Imagínate!\", 3.1415926535, 5.2e+50, \"\",null,true,false,[],[],[],[[[[[[[[[[[[[[]]]]]]]]]]]]]]]");
         string.push_str(&"]".repeat(100));
         let bump = Bump::new();
         let ret = parse(string.as_bytes(), &bump).unwrap();
