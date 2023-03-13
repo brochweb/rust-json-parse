@@ -7,11 +7,7 @@ use rust_json_parse::JsonDocument;
 #[global_allocator]
 static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
-#[cfg(any(
-    target_feature = "sse4.2",
-    target_feature = "avx",
-    target_feature = "neon"
-))]
+#[cfg(any(target_feature = "sse4.2", target_feature = "neon"))]
 #[derive(clap::Parser)]
 struct Args {
     #[arg(short, long)]
@@ -25,11 +21,7 @@ struct Args {
     simd: bool,
 }
 
-#[cfg(not(any(
-    target_feature = "sse4.2",
-    target_feature = "avx",
-    target_feature = "neon"
-)))]
+#[cfg(not(any(target_feature = "sse4.2", target_feature = "neon")))]
 #[derive(clap::Parser)]
 struct Args {
     #[arg(short, long)]
@@ -51,11 +43,7 @@ fn main() -> Result<()> {
     } else {
         std::fs::read(args.file)?
     };
-    #[cfg(any(
-        target_feature = "sse4.2",
-        target_feature = "avx",
-        target_feature = "neon"
-    ))]
+    #[cfg(any(target_feature = "sse4.2", target_feature = "neon"))]
     if args.simd {
         let _ = simd_json::from_slice::<serde_json::Value>(&mut json)?;
         return Ok(());
