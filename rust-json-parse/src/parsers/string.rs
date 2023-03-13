@@ -1,5 +1,5 @@
 #[cfg(target_arch = "aarch64")]
-use std::arch::aarch64::vld1_dup_u8;
+use std::arch::aarch64::vld1q_dup_u8;
 #[cfg(target_arch = "x86")]
 use std::arch::x86::_mm_set1_epi8;
 #[cfg(target_arch = "x86_64")]
@@ -24,7 +24,7 @@ pub fn read_string<'a, 'b>(
     }
     let mut buf: Vec<u8> = Vec::new_in(alloc);
     #[cfg(target_arch = "aarch64")]
-    let conditions = unsafe { [vld1_dup_u8(&b'"'), vld1_dup_u8(&b'\\')] };
+    let conditions = unsafe { [vld1q_dup_u8(&b'"'), vld1q_dup_u8(&b'\\')] };
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     let conditions = unsafe { [_mm_set1_epi8(b'"' as i8), _mm_set1_epi8(b'\\' as i8)] };
     loop {

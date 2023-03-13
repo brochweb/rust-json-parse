@@ -1,9 +1,9 @@
 #[cfg(target_arch = "aarch64")]
-use std::arch::aarch64::{uint8x8_t, vceq_u8, vld1_u8};
+use std::arch::aarch64::*;
 #[cfg(target_arch = "x86")]
-use std::arch::x86::{__m128i, _mm_cmpeq_epi8, _mm_set_epi8};
+use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::{__m128i, _mm_cmpeq_epi8, _mm_set_epi8};
+use std::arch::x86_64::*;
 
 use std::mem;
 
@@ -172,16 +172,16 @@ impl<'a> SliceIter<'a, u8> {
     #[cfg(target_arch = "aarch64")]
     pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
         &mut self,
-        conditions: [uint8x8_t; N],
+        conditions: [uint8x16_t; N],
         pred: P,
     ) -> &[u8] {
         let op_slice = &self.slice[self.index..];
         let mut len = 0;
         unsafe {
             'outer: while self.index < (self.slice.len() - 8) {
-                let vector = vld1_u8(self.slice[self.index..].as_ptr());
+                let vector = vld1q_u8(self.slice[self.index..].as_ptr());
                 for condition in conditions {
-                    if mem::transmute::<_, u64>(vceq_u8(vector, condition)) != 0 {
+                    if mem::transmute::<_, u128>(vceqq_u8(vector, condition)) != 0 {
                         break 'outer;
                     }
                 }
