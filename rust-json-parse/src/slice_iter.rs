@@ -5,8 +5,6 @@ use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 
-use std::mem;
-
 #[derive(Debug)]
 pub struct SliceIter<'a, T: Copy> {
     slice: &'a [T],
@@ -181,7 +179,7 @@ impl<'a> SliceIter<'a, u8> {
             'outer: while self.index < (self.slice.len() - 8) {
                 let vector = vld1q_u8(self.slice[self.index..].as_ptr());
                 for condition in conditions {
-                    if mem::transmute::<_, u128>(vceqq_u8(vector, condition)) != 0 {
+                    if vmaxvq_u8(vceqq_u8(vector, condition)) != 0 {
                         break 'outer;
                     }
                 }
@@ -229,7 +227,11 @@ impl<'a> SliceIter<'a, u8> {
                     self.slice[self.index + 15] as i8,
                 );
                 for condition in conditions {
-                    if mem::transmute::<_, u128>(_mm_cmpeq_epi8(vector, condition)) != 0 {
+                    let result = _mm_cmpeq_epi8(vector, condition);
+                    if _mm_movemask_epi8(result) != 0 {
+                        // _mm_movemask_epi8 takes the most significant digit from each byte in the register
+                        // and puts it in an i32. Because result is the result of a equality comparison, each byte
+                        // is either all ones or all zeroes, so testing only the first bit of each byte suffices
                         break 'outer;
                     }
                 }
