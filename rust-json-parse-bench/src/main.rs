@@ -7,6 +7,11 @@ use rust_json_parse::JsonDocument;
 #[global_allocator]
 static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
+#[cfg(any(
+    target_feature = "sse4.2",
+    target_feature = "avx",
+    target_feature = "neon"
+))]
 #[derive(clap::Parser)]
 struct Args {
     #[arg(short, long)]
@@ -20,6 +25,22 @@ struct Args {
     simd: bool,
 }
 
+#[cfg(not(any(
+    target_feature = "sse4.2",
+    target_feature = "avx",
+    target_feature = "neon"
+)))]
+#[derive(clap::Parser)]
+struct Args {
+    #[arg(short, long)]
+    print: bool,
+    /// Set to `-` for stdin
+    #[arg(default_value = "-")]
+    file: String,
+    #[arg(short, long)]
+    serde: bool,
+}
+
 #[allow(unused_mut)]
 fn main() -> Result<()> {
     let args = Args::parse();
@@ -30,10 +51,17 @@ fn main() -> Result<()> {
     } else {
         std::fs::read(args.file)?
     };
+    #[cfg(any(
+        target_feature = "sse4.2",
+        target_feature = "avx",
+        target_feature = "neon"
+    ))]
+    if args.simd {
+        let _ = simd_json::from_slice::<serde_json::Value>(&mut json)?;
+        return Ok(());
+    }
     if args.serde {
         let _ = serde_json::from_slice::<serde_json::Value>(&json)?;
-    } else if args.simd {
-        // let _ = simd_json::from_slice::<serde_json::Value>(&mut json)?;
     } else {
         let _ = JsonDocument::parse_create(&json)?;
     }
