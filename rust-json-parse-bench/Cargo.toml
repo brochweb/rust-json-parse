@@ -1,0 +1,15 @@
+[package]
+name = "rust-json-parse-bench"
+version = "0.5.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+clap = {version = "4", features = ["derive"]}
+rust-json-parse = {path = "../rust-json-parse"}
+serde_json = "1"
+simd-json = "0.7"
+snmalloc-rs = "0.3"
