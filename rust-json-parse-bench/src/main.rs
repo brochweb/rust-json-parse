@@ -4,6 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use rust_json_parse::JsonDocument;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[global_allocator]
 static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
