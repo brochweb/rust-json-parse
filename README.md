@@ -7,7 +7,7 @@ This is a research project, it is not tested for production, but only provided a
 
 |           file           | implementation  | time (secs) | memory (KB) |
 | :----------------------: | :-------------: | :---------: | :---------: |
-| tests/ascii_strings.json | rust-json-parse |    0.044    |   101584    |
+| tests/ascii_strings.json | rust-json-parse |    0.041    |   101568    |
 | tests/ascii_strings.json |   serde_json    |    0.079    |   104352    |
 | tests/ascii_strings.json |    simd-json    |    0.072    |   152016    |
 |    tests/numbers.json    | rust-json-parse |    0.094    |    86128    |

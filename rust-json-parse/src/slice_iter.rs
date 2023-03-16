@@ -29,18 +29,21 @@ pub trait CopyIter<'a>: Iterator {
 
     fn ignore_many(&mut self, num: usize);
 
+    #[inline]
     fn take_many<const N: usize>(&mut self) -> Option<[Self::Item; N]> {
         let ret = self.peek_many::<N>();
         self.ignore_many(N);
         return ret;
     }
 
+    #[inline]
     fn take_many_ref(&mut self, len: usize) -> Option<&'a [Self::Item]> {
         let ret = self.peek_many_ref(len);
         self.ignore_many(len);
         return ret;
     }
 
+    #[inline]
     fn take_while<F: Fn(Self::Item) -> bool>(&mut self, pred: F) -> &'a [Self::Item] {
         let mut len = 0;
         while let Some(val) = self.peek_at_copy(len) {
@@ -169,6 +172,7 @@ impl<'a, T: Copy> Iterator for SliceIter<'a, T> {
 }
 
 impl<'a> SliceIter<'a, u8> {
+    #[inline]
     pub fn take_while_ne_simd<const N: usize, P: Fn(u8) -> bool>(
         &mut self,
         conditions: [u8x16; N],
@@ -176,8 +180,8 @@ impl<'a> SliceIter<'a, u8> {
     ) -> &[u8] {
         let op_slice = &self.slice[self.index..];
         let mut len = 0;
-        'outer: while self.index < (self.slice.len() - 16) {
-            let vector = u8x16::from_slice(&self.slice[self.index..]);
+        'outer: while let Some(chnk) = self.peek_many() {
+            let vector = u8x16::from_array(chnk);
             for condition in conditions {
                 if vector.simd_eq(condition).any() {
                     break 'outer;
