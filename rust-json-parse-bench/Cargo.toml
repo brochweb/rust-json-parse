@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/brochweb/rust-json-parse"
 homepage = "https://github.com/brochweb/rust-json-parse"
 readme = "../README.md"
+description = "An optimized JSON parser for Rust using SIMD and an arena allocator"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
