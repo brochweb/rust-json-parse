@@ -1,10 +1,3 @@
-// #[cfg(target_arch = "aarch64")]
-// use std::arch::aarch64::*;
-// #[cfg(target_arch = "x86")]
-// use std::arch::x86::*;
-// #[cfg(target_arch = "x86_64")]
-// use std::arch::x86_64::*;
-
 use std::simd::{u8x16, SimdPartialEq};
 
 #[derive(Debug)]

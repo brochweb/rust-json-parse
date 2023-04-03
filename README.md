@@ -4,6 +4,8 @@ An optimized JSON parser in Rust that parses a slice `&[u8]` to a `JsonValue` en
 
 This is a research project, it is not tested for production, but only provided as an example Rust program to optimize. Suggestions for improving reliability, speed or memory usage are welcome.
 
+For the moment nightly-only because it relies on portable SIMD.
+
 
 |           file           | implementation  | time (secs) | memory (KB) |
 | :----------------------: | :-------------: | :---------: | :---------: |

@@ -3,6 +3,9 @@ name = "rust-json-parse"
 version = "0.6.3"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/brochweb/rust-json-parse"
+homepage = "https://github.com/brochweb/rust-json-parse"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

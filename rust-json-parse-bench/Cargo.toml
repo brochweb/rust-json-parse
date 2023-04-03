@@ -3,6 +3,9 @@ name = "rust-json-parse-bench"
 version = "0.6.4"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/brochweb/rust-json-parse"
+homepage = "https://github.com/brochweb/rust-json-parse"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,7 +16,7 @@ rust-json-parse = {path = "../rust-json-parse"}
 serde_json = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rsbmalloc = {git = "https://github.com/AWBroch/binned-alloc-rs.git", tag = "v0.3.1"}
+rsbmalloc = "0.3"
 
 [target.'cfg(any(target_feature = "neon", target_feature = "sse4.2"))'.dependencies]
 simd-json = {version = "0.7"}
