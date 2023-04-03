@@ -6,7 +6,7 @@ use rust_json_parse::JsonDocument;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[global_allocator]
-static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
+static ALLOC: rsbmalloc::BinnedAlloc = rsbmalloc::BinnedAlloc::new();
 
 #[cfg(any(target_feature = "sse4.2", target_feature = "neon"))]
 #[derive(clap::Parser)]
@@ -55,4 +55,33 @@ fn main() -> Result<()> {
         let _ = JsonDocument::parse_create(&json)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::thread;
+
+    #[test]
+    fn test_global_allocator() {
+        const THREADS: usize = 8;
+        const ITERATIONS: usize = 10000;
+
+        let mut threads = Vec::with_capacity(THREADS);
+
+        for i in 0..THREADS {
+            threads.push(thread::spawn(move || {
+                for _ in 0..ITERATIONS {
+                    let vec = vec![i; 256];
+                    for word in &vec {
+                        assert_eq!(*word, i);
+                    }
+                    drop(vec);
+                }
+            }));
+        }
+
+        for thread in threads {
+            thread.join().unwrap();
+        }
+    }
 }
