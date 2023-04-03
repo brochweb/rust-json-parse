@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 readme = "../README.md"
 repository = "https://github.com/brochweb/rust-json-parse"
 homepage = "https://github.com/brochweb/rust-json-parse"
+description = "An optimized JSON parser using SIMD and an arena allocator"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
