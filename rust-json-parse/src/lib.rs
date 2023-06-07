@@ -392,7 +392,7 @@ mod tests {
             }
             _ => panic!("Expected object"),
         }
-        drop(root);
+        // drop(root);
         let root = ret.root();
         assert_eq!(
             Some(&JsonValue::String(
