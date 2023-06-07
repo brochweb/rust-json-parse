@@ -6,7 +6,7 @@ use rust_json_parse::JsonDocument;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[global_allocator]
-static ALLOC: rsbmalloc::BinnedAlloc = rsbmalloc::BinnedAlloc::new();
+static ALLOC: rsbmalloc::RSBMalloc = rsbmalloc::RSBMalloc::new();
 
 #[cfg(any(target_feature = "sse4.2", target_feature = "neon"))]
 #[derive(clap::Parser)]
