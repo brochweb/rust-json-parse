@@ -16,6 +16,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 bumpalo = { version = "3", features = ["collections", "boxed"] }
 hashbrown = { version = "0.13", features = ["bumpalo"] }
-itertools = "0.10"
+itertools = "0.11"
 simdutf8 = { version = "0.1", features = ["aarch64_neon"] }
 thiserror = "1"

@@ -1,2 +1,3 @@
 [workspace]
 members = ["rust-json-parse", "rust-json-parse-bench"]
+resolver = "2"
