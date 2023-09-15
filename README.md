@@ -9,20 +9,20 @@ For the moment nightly-only because it relies on portable SIMD.
 
 |           file           | implementation  | time (secs) | memory (KB) |
 | :----------------------: | :-------------: | :---------: | :---------: |
-| tests/ascii_strings.json | rust-json-parse |    0.038    |   101184    |
-| tests/ascii_strings.json |   serde_json    |    0.097    |   120480    |
-| tests/ascii_strings.json |    simd-json    |    0.075    |   124944    |
-|    tests/numbers.json    | rust-json-parse |    0.087    |    85696    |
-|    tests/numbers.json    |   serde_json    |    0.109    |   126432    |
-|    tests/numbers.json    |    simd-json    |    0.109    |   161248    |
-|    tests/random.json     | rust-json-parse |    0.276    |   241504    |
-|    tests/random.json     |   serde_json    |    0.338    |   198128    |
-|    tests/random.json     |    simd-json    |    0.330    |   259728    |
-|     tests/food.json      | rust-json-parse |    0.003    |    2032     |
-|     tests/food.json      |   serde_json    |    0.004    |    2048     |
-|     tests/food.json      |    simd-json    |    0.003    |    2208     |
-|    tests/geojson.json    | rust-json-parse |    0.041    |    59440    |
-|    tests/geojson.json    |   serde_json    |    0.077    |    89296    |
-|    tests/geojson.json    |    simd-json    |    0.071    |   105680    |
+| tests/ascii_strings.json | rust-json-parse |    0.030    |   101152    |
+| tests/ascii_strings.json |   serde_json    |    0.063    |   120416    |
+| tests/ascii_strings.json |    simd-json    |    0.052    |   124896    |
+|    tests/numbers.json    | rust-json-parse |    0.058    |    85680    |
+|    tests/numbers.json    |   serde_json    |    0.073    |   126384    |
+|    tests/numbers.json    |    simd-json    |    0.080    |   161216    |
+|    tests/random.json     | rust-json-parse |    0.196    |   241504    |
+|    tests/random.json     |   serde_json    |    0.209    |   198080    |
+|    tests/random.json     |    simd-json    |    0.213    |   259696    |
+|     tests/food.json      | rust-json-parse |    0.002    |    2000     |
+|     tests/food.json      |   serde_json    |    0.003    |    2016     |
+|     tests/food.json      |    simd-json    |    0.003    |    2240     |
+|    tests/geojson.json    | rust-json-parse |    0.038    |    59424    |
+|    tests/geojson.json    |   serde_json    |    0.057    |    89344    |
+|    tests/geojson.json    |    simd-json    |    0.051    |   105760    |
 
 A [Broch Web Solutions](https://www.brochweb.com/) project
