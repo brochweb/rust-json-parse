@@ -1,4 +1,5 @@
-use std::simd::{u8x16, SimdPartialEq};
+use std::simd::cmp::SimdPartialEq;
+use std::simd::u8x16;
 
 #[derive(Debug)]
 pub struct SliceIter<'a, T: Copy> {

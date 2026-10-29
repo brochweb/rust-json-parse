@@ -97,7 +97,7 @@ fn escape<'a, I: CopyIter<'a, Item = u8>>(json: &mut I, buf: &mut Vec<u8>) -> Js
                 .map_err(|_| ParseError::InvalidStringEscape)?;
                 utf16_len += 1;
             }
-            std::char::decode_utf16(codepoint[0..utf16_len].into_iter().copied())
+            let _: () = std::char::decode_utf16(codepoint[0..utf16_len].into_iter().copied())
                 .map(|r| match r {
                     Ok(char) => {
                         let mut dst: [u8; 4] = [0; 4];
